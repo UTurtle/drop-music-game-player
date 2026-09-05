@@ -102,7 +102,7 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
     window.render_game_to_text = () => JSON.stringify({
       ...engine.current.snapshot, judged: engine.current.snapshot.judged.size,
       coordinates: 'Canvas origin top-left; notes fall down to hit line. Lane A at 27%, D at 73%.',
-      pressed: [...pressed.current], controls: { left: ['A', 'ArrowLeft', 'Z'], right: ['D', 'ArrowRight', 'X'] },
+      pressed: [...pressed.current], noteShapes: { A: 'star', D: 'diamond' }, controls: { left: ['A', 'ArrowLeft', 'Z'], right: ['D', 'ArrowRight', 'X'] },
       chartId: activeChart.current.chartId, offsetMs: activeChart.current.offsetMs,
       notes: activeChart.current.notes.filter((note, i) => !engine.current.snapshot.judged.has(i) && Math.abs(note.timeMs + activeChart.current.offsetMs - engine.current.snapshot.timeMs) < 1800),
     });

@@ -324,3 +324,6 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .local-note a { text-decoration: underline; }
 .generate-button { margin-top: 18px; }
 @media(max-width:600px) { .header-links { gap: 8px; } .language-switch button { padding: 6px; } .header-links .header-link { font-size: 10px; } .local-note { padding: 20px; } }
+.hero-copy { min-width: 0; flex: 1; }
+.hero-mark { flex-shrink: 0; }
+html[lang=ko] .hero h1 { font-size: clamp(38px, 4.2vw, 58px); line-height: 1.2; word-break: keep-all; }

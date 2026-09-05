@@ -1,6 +1,6 @@
 # DROP
 
-**A little rhythm game for your own music. Just for fun.**
+**Why aren’t my favorite songs in rhythm games?**
 
 [English](README.md) · [한국어](README.ko.md)
 
