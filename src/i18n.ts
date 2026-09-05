@@ -65,7 +65,7 @@ const translations: Record<string, string> = {
   "왼쪽 A·왼쪽 화살표·Z, 오른쪽 D·오른쪽 화살표·X 두 레인 리듬게임. 노트가 판정선에 오면 해당 키를 누르세요.": "Two lanes: A / Left arrow / Z on the left, D / Right arrow / X on the right. Press when notes reach the line.",
   "다시 PLAY": "PLAY again",
   "↺ 처음부터": "\u21ba Restart",
-  "A D / ← → / Z X · Space 일시정지 · F 전체화면": "A D / \u2190 \u2192 / Z X \u00b7 Space pause \u00b7 F fullscreen",
+  "★ A / ← / Z · ◆ D / → / X · Space 일시정지 · F 전체화면": "★ A / ← / Z · ◆ D / → / X · Space pause · F fullscreen",
   "끝까지 잘 들었어요.": "Thanks for playing.",
   "최대 콤보": "Best combo",
   "· 탐색한 연습 세션": "\u00b7 Practice after seeking",

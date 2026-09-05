@@ -1,10 +1,10 @@
 import { t } from './i18n';
-import type { Difficulty, Note } from './chart';
+import type { Difficulty, Note, Lane } from './chart';
 
 export const SAMPLE_RATE = 22_050;
 export const HOP = 220;
 export const FFT_SIZE = 1024;
-export const BROWSER_GENERATOR = 'browser-flux-rules-v1';
+export const BROWSER_GENERATOR = 'browser-flux-phrases-v2';
 export const DENSITY = { easy: { gap: 300, perSecond: 3 }, hard: { gap: 140, perSecond: 6 } };
 export interface Analysis { durationMs: number; tempoBpm: number; easy: Note[]; hard: Note[] }
 
@@ -41,7 +41,42 @@ function lowerBound(values: number[], value: number) {
   while (low < high) { const mid = (low + high) >>> 1; if (values[mid] < value) low = mid + 1; else high = mid; }
   return low;
 }
-export function thin(candidates: { timeMs: number; score: number }[], difficulty: Difficulty): Note[] {
+export interface Candidate { timeMs: number; score: number; salience?: number; brightness?: number }
+
+/** Map existing onsets, never insert arbitrary notes between audible events. */
+export function assignLanes(events: Candidate[], difficulty: Difficulty, beatMs = 500): Note[] {
+  if (!events.length) return [];
+  const tones = events.flatMap(event => event.brightness === undefined ? [] : [event.brightness]).sort((a, b) => a - b);
+  const quantile = (p: number) => tones[Math.floor((tones.length - 1) * p)] ?? 0;
+  const toneContrast = quantile(.9) - quantile(.1) > .05;
+  const toneSplit = (quantile(.9) + quantile(.1)) / 2;
+  const motifs: Lane[][] = difficulty === 'easy'
+    ? [['A', 'A', 'D', 'D'], ['A', 'D', 'D', 'A']]
+    : [['A', 'A', 'D', 'A', 'D', 'D', 'A', 'D'], ['A', 'D', 'D', 'D', 'A', 'A', 'D', 'A']];
+  const result: Note[] = [];
+  let phrase = -1, inPhrase = 0, repeat = 0;
+  const maxRepeat = difficulty === 'easy' ? 2 : 3;
+  const average = events.reduce((sum, event) => sum + (event.salience ?? event.score), 0) / events.length;
+  events.forEach((event, index) => {
+    const bar = Math.floor(event.timeMs / Math.max(250, beatMs) / 4);
+    const gap = index ? event.timeMs - events[index - 1].timeMs : Infinity;
+    if (bar !== phrase || gap > beatMs * 1.6) { phrase = bar; inPhrase = 0; }
+    const strength = event.salience ?? event.score;
+    const motif = motifs[strength > average * 1.15 ? 1 : 0];
+    let lane: Lane = toneContrast && event.brightness !== undefined
+      ? event.brightness <= toneSplit ? 'A' : 'D'
+      : motif[inPhrase % motif.length];
+    // A clearly accented phrase opening anchors the phrase on the first lane.
+    if (!toneContrast && inPhrase === 0 && strength > average * 1.25) lane = 'A';
+    const last = result[index - 1]?.lane;
+    if (lane === last && (repeat >= maxRepeat || gap < 200)) lane = lane === 'A' ? 'D' : 'A';
+    repeat = lane === last ? repeat + 1 : 1;
+    result.push({ timeMs: event.timeMs, lane }); inPhrase++;
+  });
+  return result;
+}
+
+export function thin(candidates: Candidate[], difficulty: Difficulty, beatMs = 500): Note[] {
   const limits = DENSITY[difficulty];
   const selected: number[] = [];
   for (const { timeMs } of [...candidates].sort((a, b) => b.score - a.score || a.timeMs - b.timeMs)) {
@@ -52,7 +87,8 @@ export function thin(candidates: { timeMs: number; score: number }[], difficulty
     // Local working array, kept ordered for bounded neighbor checks.
     selected.splice(pos, 0, timeMs);
   }
-  return selected.map((timeMs, i) => ({ timeMs, lane: i % 2 ? 'D' : 'A' }));
+  const byTime = new Map(candidates.map(event => [event.timeMs, event]));
+  return assignLanes(selected.map(timeMs => byTime.get(timeMs)!), difficulty, beatMs);
 }
 
 export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (percent: number) => void = () => {}): Analysis {
@@ -61,7 +97,7 @@ export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (p
   for (const value of audio) { if (!Number.isFinite(value)) throw new Error(t("음원에 잘못된 샘플이 있습니다.")); peak = Math.max(peak, Math.abs(value)); }
   if (peak < 0.00001) throw new Error(t("무음 파일에서는 채보를 만들 수 없습니다."));
   const count = Math.floor((audio.length - FFT_SIZE) / HOP) + 1;
-  const flux = new Float64Array(count), energy = new Float64Array(count);
+  const flux = new Float64Array(count), energy = new Float64Array(count), brightness = new Float64Array(count);
   const window = Float64Array.from({ length: FFT_SIZE }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (FFT_SIZE - 1)));
   const real = new Float64Array(FFT_SIZE), imaginary = new Float64Array(FFT_SIZE), previous = new Float64Array(FFT_SIZE / 2);
   let maxFlux = 0, maxEnergy = 0;
@@ -73,11 +109,13 @@ export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (p
     }
     energy[frame] = Math.sqrt(sum / FFT_SIZE); maxEnergy = Math.max(maxEnergy, energy[frame]);
     fft(real, imaginary);
-    let strength = 0;
+    let strength = 0, weighted = 0;
     for (let bin = 1; bin < FFT_SIZE / 2; bin++) {
       const magnitude = Math.log1p(Math.hypot(real[bin], imaginary[bin]));
-      strength += Math.max(0, magnitude - previous[bin]); previous[bin] = magnitude;
+      const rise = Math.max(0, magnitude - previous[bin]);
+      strength += rise; weighted += rise * bin / (FFT_SIZE / 2); previous[bin] = magnitude;
     }
+    brightness[frame] = strength > 0 ? weighted / strength : 0;
     flux[frame] = frame ? strength : 0; maxFlux = Math.max(maxFlux, flux[frame]);
     if (frame % 500 === 0) progress(Math.round(10 + frame / count * 65));
   }
@@ -98,7 +136,7 @@ export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (p
   for (let i = 1; i < phases.length; i++) if (phases[i] > phases[phase]) phase = i;
   progress(85);
   const durationMs = Math.round(audio.length / sampleRate * 1000);
-  const candidates: { timeMs: number; salience: number; score: number }[] = [];
+  const candidates: (Candidate & { salience: number })[] = [];
   for (let i = 2; i < count - 2; i++) {
     if (flux[i] <= flux[i - 1] || flux[i] < flux[i + 1] || flux[i] < flux[i - 2] || flux[i] < flux[i + 2]) continue;
     if (energy[i] < maxEnergy * .035) continue;
@@ -111,10 +149,10 @@ export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (p
     if (flux[i] < localMean / (right - left) * 1.3) continue;
     const delta = ((i - phase) % bestLag + bestLag) % bestLag;
     const nearBeat = Math.min(delta, bestLag - delta) * HOP / sampleRate < .08;
-    candidates.push({ timeMs, salience, score: salience + (nearBeat ? .35 : 0) });
+    candidates.push({ timeMs, salience, brightness: brightness[i], score: salience + (nearBeat ? .35 : 0) });
   }
-  const easy = thin(candidates.filter(event => event.salience >= .12), 'easy');
-  const hard = thin(candidates.filter(event => event.salience >= .045), 'hard');
+  const easy = thin(candidates.filter(event => event.salience >= .12), 'easy', bestLag * HOP / sampleRate * 1000);
+  const hard = thin(candidates.filter(event => event.salience >= .045), 'hard', bestLag * HOP / sampleRate * 1000);
   if (!easy.length || !hard.length) throw new Error(t("충분한 리듬 후보를 찾지 못했습니다. 다른 음원을 선택해 주세요."));
   progress(100);
   return { durationMs, tempoBpm: Math.round(60 * sampleRate / (bestLag * HOP)), easy, hard };

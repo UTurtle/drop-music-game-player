@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzePcm, DENSITY, fft, SAMPLE_RATE, thin } from '../src/dsp';
+import { analyzePcm, assignLanes, DENSITY, fft, SAMPLE_RATE, thin } from '../src/dsp';
 
 test('FFT identifies a known frequency bin with expected amplitude', () => {
   const real = Float64Array.from({ length: 1024 }, (_, i) => Math.sin(2 * Math.PI * 16 * i / 1024));
@@ -21,6 +21,8 @@ test('browser DSP finds synthetic attacks, excludes silence, preserves input, an
   assert.ok(result.easy.length > 10); assert.ok(result.hard.length > result.easy.length);
   for (const difficulty of ['easy', 'hard'] as const) {
     const notes = result[difficulty], limits = DENSITY[difficulty];
+    assert.ok(notes.some((note, i) => i > 0 && note.lane === notes[i - 1].lane), 'Generated PCM charts need repeated hits, not forced alternation');
+    assert.ok(notes.some((note, i) => i > 0 && note.lane !== notes[i - 1].lane));
     for (let i = 0; i < notes.length; i++) {
       assert.ok(notes[i].timeMs >= 950 && notes[i].timeMs < 11050);
       assert.ok(Math.min(notes[i].timeMs % 250, 250 - notes[i].timeMs % 250) <= 60);
@@ -35,4 +37,24 @@ test('browser DSP rejects silence and corrupt PCM; thinning caps dense sequences
   assert.throws(() => analyzePcm(bad, SAMPLE_RATE), /샘플/);
   const candidates = Array.from({ length: 500 }, (_, i) => ({ timeMs: i * 20, score: 1 }));
   assert.deepEqual(thin(candidates, 'hard'), thin(candidates.reverse(), 'hard'));
+});
+
+test('phrase mapping has repeat hits and switches, respects hand limits and preserves onset times', () => {
+  const events = Array.from({ length: 24 }, (_, i) => ({ timeMs: 1000 + i * 250, score: 1, salience: .8 }));
+  for (const level of ['easy', 'hard'] as const) {
+    const notes = assignLanes(events, level);
+    assert.deepEqual(notes.map(n => n.timeMs), events.map(n => n.timeMs));
+    assert.ok(notes.some((n, i) => i && n.lane === notes[i - 1].lane));
+    assert.ok(notes.some((n, i) => i && n.lane !== notes[i - 1].lane));
+    let run = 1;
+    notes.forEach((note, i) => { run = i && note.lane === notes[i - 1].lane ? run + 1 : 1; assert.ok(run <= (level === 'easy' ? 2 : 3)); });
+    assert.deepEqual(notes, assignLanes(events, level));
+  }
+  const tones = events.map((event, i) => ({ ...event, brightness: i % 4 < 2 ? .02 : .4 }));
+  const lanes = assignLanes(tones, 'hard').map(n => n.lane);
+  assert.deepEqual(lanes.slice(0, 4), ['A', 'A', 'D', 'D']);
+  const swapped = assignLanes(tones.map(e => ({ ...e, brightness: .42 - e.brightness })), 'hard');
+  assert.deepEqual(swapped.slice(0, 4).map(n => n.lane), ['D', 'D', 'A', 'A']);
+  const fast = assignLanes(events.map((e, i) => ({ ...e, timeMs: i * 150 })), 'hard');
+  assert.ok(fast.every((note, i) => !i || note.lane !== fast[i - 1].lane));
 });

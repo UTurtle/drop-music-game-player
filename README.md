@@ -44,12 +44,14 @@ Stop the existing server before using the same port. `DROP_PORT` changes the por
 
 | Action | Keys |
 | --- | --- |
-| Left lane | `A`, `←`, or `Z` |
-| Right lane | `D`, `→`, or `X` |
+| Star | `A`, `←`, or `Z` |
+| Diamond | `D`, `→`, or `X` |
 | Pause / resume | `Space` |
 | Fullscreen | `F` (exit with `Esc`) |
 
 EN / KO switches the interface language without reloading the current session. Your language choice is saved in this browser.
+
+Desktop and landscape screens scroll right to left; portrait phones scroll downward. Match stars with the star outline and diamonds with the diamond outline. On touch screens, tap the matching target.
 
 No file handy? **Practice** uses original synthesized audio included as code.
 
@@ -69,6 +71,8 @@ Generation still needs your local audio file. DROP does not download videos, cap
 - Installing dependencies requires internet access. After installation and a build, local audio-only play works without internet access while the local server is running.
 
 ## Expectations
+
+The v2 generator uses onset brightness, accents and short phrase patterns, including repeat hits. Easy caps same-side runs at two; Hard at three, with very fast events alternating to avoid excessive one-hand bursts. Existing sessions must be regenerated to use these rules.
 
 Automatic charts are rough DSP-generated drafts, not hand-mapped charts. They can miss musical accents or feel repetitive. Real-song quality and synchronization vary; the automated tests use synthetic audio and mocked video events. There is no model training, and this is a hobby project, not a commercial service.
 

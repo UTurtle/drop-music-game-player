@@ -227,7 +227,7 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .practice-session .score-bottom { gap: 20px; border: 0; padding: 0; }
 .practice-session .note-canvas { height: clamp(330px, calc(100svh - 530px), 900px); }
 @media (min-width: 601px) {
-  .mv-session .video-area { aspect-ratio: auto; height: clamp(220px, 35svh, 480px); }
+  .mv-session { max-width: 1280px; margin-inline: auto; }
 }
 @media (max-width: 600px) {
   body:has(.session) main, body:has(.session) .site-header { width: calc(100% - 20px); }
@@ -327,3 +327,12 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .hero-copy { min-width: 0; flex: 1; }
 .hero-mark { flex-shrink: 0; }
 html[lang=ko] .hero h1 { font-size: clamp(38px, 4.2vw, 58px); line-height: 1.2; word-break: keep-all; }
+
+/* Reserve the complete 16:9 embed instead of stretching it into a banner. */
+.mv-session .video-area { position: relative; width: 100%; aspect-ratio: 16 / 9; height: auto; min-height: 0; max-height: none; }
+.mv-session .youtube-host, .mv-session .video-area > iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.note-canvas { touch-action: none; }
+@media (min-width: 601px) {
+  .mv-session .video-area { width: min(100%, calc(clamp(200px, 38svh, 430px) * 16 / 9)); justify-self: center; }
+}

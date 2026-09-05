@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:51100';
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined, headless: true });
 const output = 'output/browser'; await mkdir(output, { recursive: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: 'ko-KR' });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: 'ko-KR', hasTouch: true });
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 const state = () => page.evaluate(() => JSON.parse(window.render_game_to_text()));
 const advance = ms => page.evaluate(ms => window.advanceTime(ms), ms);
@@ -20,6 +20,7 @@ try {
   for (const [left, right] of [['a','d'], ['ArrowLeft','ArrowRight'], ['z','x']]) {
     await page.goto(`${base}/practice?test=1`);
     await page.locator('#play-button').click();
+    assert.equal((await state()).layout.vertical, false);
     await advance(2000); await page.keyboard.press(left); assert.equal((await state()).score, 1000);
     await advance(1000); await page.keyboard.press(right); assert.equal((await state()).combo, 2);
     await page.keyboard.press('Space'); const paused = await state(); await advance(1000); assert.equal((await state()).timeMs, paused.timeMs);
@@ -37,6 +38,15 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#play-button').click(); await advance(1500);
   await page.screenshot({ path: `${output}/mobile.png`, fullPage: true });
+  assert.equal((await state()).layout.vertical, true);
+  await advance(500);
+  const target = (await state()).layout.centers.A;
+  const bounds = await page.locator('canvas').boundingBox();
+  await page.touchscreen.tap(bounds.x + target.x, bounds.y + target.y);
+  assert.equal((await state()).score, 1000, 'Tapping the matching shape must score');
+  await page.setViewportSize({ width: 844, height: 390 });
+  assert.equal((await state()).layout.vertical, false);
+  assert.equal((await state()).score, 1000, 'Rotation must preserve gameplay');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, []);
   await writeFile(`${output}/report.json`, JSON.stringify({ passed: ['EN/KO switch and persistence', 'All three key pairs score', 'Pause, misses, restart, end and Hard', 'Language switch preserves session', 'Mobile has no horizontal overflow'], pageErrors: errors }, null, 2));

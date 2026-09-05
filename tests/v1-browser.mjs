@@ -111,6 +111,15 @@ try {
   await page.locator('#play-button').click();
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).status === 'playing');
   assert.equal(await page.locator('iframe').count(), 1);
+  const embed = await page.locator('iframe').boundingBox();
+  assert.ok(Math.abs(embed.width / embed.height - 16 / 9) < .01, 'Video must retain a 16:9 ratio');
+  const canvas = await page.locator('canvas').boundingBox();
+  assert.ok(canvas.y >= embed.y + embed.height, 'Notes must not cover the embedded video');
+  await page.screenshot({ path: `${output}/video-layout.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileEmbed = await page.locator('iframe').boundingBox();
+  assert.ok(Math.abs(mobileEmbed.width / mobileEmbed.height - 16 / 9) < .01, 'Mobile video must retain its aspect ratio');
+  await page.setViewportSize({ width: 1440, height: 900 });
   assert.equal(await page.getByRole('button', { name: 'PUBLISH' }).count(), 0);
   await page.getByRole('checkbox', { name: '음악 파일 대신' }).uncheck();
   await page.locator('#play-button').click();

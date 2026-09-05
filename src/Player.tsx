@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { parseChart, playPath, type Chart, type Lane } from './chart';
 import { GameEngine, type Status } from './engine';
 import { createYouTube, PracticeMedia, LocalFileMedia, type Media } from './media';
-import { renderNotes } from './render';
+import { renderNotes, getPlayfieldLayout } from './render';
 
 const keyLanes: Record<string, Lane> = { KeyA: 'A', ArrowLeft: 'A', KeyZ: 'A', KeyD: 'D', ArrowRight: 'D', KeyX: 'D' };
 
@@ -78,6 +78,7 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
       frame = requestAnimationFrame(tick);
     }
     const heldKeys = new Set<string>();
+    const heldPointers = new Map<number, Lane>();
     function keydown(event: KeyboardEvent) {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, button, a, summary')) return;
       const lane = keyLanes[event.code];
@@ -93,15 +94,36 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
     function keyup(event: KeyboardEvent) {
       heldKeys.delete(event.code);
       const lane = keyLanes[event.code];
-      if (lane && ![...heldKeys].some(code => keyLanes[code] === lane)) pressed.current.delete(lane);
+      if (lane && ![...heldKeys].some(code => keyLanes[code] === lane) && ![...heldPointers.values()].includes(lane)) pressed.current.delete(lane);
     }
-    function blur() { heldKeys.clear(); pressed.current.clear(); if (engine.current.snapshot.status === 'playing') media.current?.pause(); }
+    function pointerdown(event: PointerEvent) {
+      if (!canvas.current) return;
+      const rect = canvas.current.getBoundingClientRect();
+      const { centers } = getPlayfieldLayout(canvas.current);
+      const x = event.clientX - rect.left, y = event.clientY - rect.top;
+      const lane = (['A', 'D'] as const).find(lane => Math.hypot(x - centers[lane].x, y - centers[lane].y) <= 68);
+      if (!lane) return;
+      event.preventDefault(); canvas.current.setPointerCapture(event.pointerId);
+      heldPointers.set(event.pointerId, lane); pressed.current.add(lane);
+      container.current?.focus({ preventScroll: true });
+      sample(); engine.current.hit(lane); setSnapshot(engine.current.snapshot);
+    }
+    function pointerup(event: PointerEvent) {
+      const lane = heldPointers.get(event.pointerId); heldPointers.delete(event.pointerId);
+      if (lane && ![...heldPointers.values()].includes(lane) && ![...heldKeys].some(code => keyLanes[code] === lane)) pressed.current.delete(lane);
+    }
+    const playCanvas = canvas.current;
+    playCanvas?.addEventListener('pointerdown', pointerdown);
+    playCanvas?.addEventListener('pointerup', pointerup);
+    playCanvas?.addEventListener('pointercancel', pointerup);
+    function blur() { heldPointers.clear(); heldKeys.clear(); pressed.current.clear(); if (engine.current.snapshot.status === 'playing') media.current?.pause(); }
     function visibility() { if (document.hidden) blur(); }
     window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
     window.addEventListener('blur', blur); document.addEventListener('visibilitychange', visibility);
     window.render_game_to_text = () => JSON.stringify({
       ...engine.current.snapshot, judged: engine.current.snapshot.judged.size,
-      coordinates: 'Canvas origin top-left; notes fall down to hit line. Lane A at 27%, D at 73%.',
+      coordinates: 'Canvas origin top-left. Portrait phone: top to bottom. Landscape: right to left.',
+      layout: canvas.current ? getPlayfieldLayout(canvas.current) : null,
       pressed: [...pressed.current], noteShapes: { A: 'star', D: 'diamond' }, controls: { left: ['A', 'ArrowLeft', 'Z'], right: ['D', 'ArrowRight', 'X'] },
       chartId: activeChart.current.chartId, offsetMs: activeChart.current.offsetMs,
       notes: activeChart.current.notes.filter((note, i) => !engine.current.snapshot.judged.has(i) && Math.abs(note.timeMs + activeChart.current.offsetMs - engine.current.snapshot.timeMs) < 1800),
@@ -114,6 +136,9 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
     frame = requestAnimationFrame(tick);
     return () => {
       abort.abort(); cancelAnimationFrame(frame);
+      playCanvas?.removeEventListener('pointerdown', pointerdown);
+      playCanvas?.removeEventListener('pointerup', pointerup);
+      playCanvas?.removeEventListener('pointercancel', pointerup);
       if (practice || audioFile) media.current?.destroy();
       media.current = null;
       window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup);
@@ -172,7 +197,7 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
       <canvas ref={canvas} className="note-canvas" aria-label={t("왼쪽 A·왼쪽 화살표·Z, 오른쪽 D·오른쪽 화살표·X 두 레인 리듬게임. 노트가 판정선에 오면 해당 키를 누르세요.")} />
     </div>
     <div className="timeline"><div style={{ width: `${progress}%` }} /></div>
-    <div className="transport"><div className="transport-buttons"><button id="play-button" className="primary" disabled={!ready || mismatch} onClick={togglePlayback}>{snapshot.status === 'ended' ? t("다시 PLAY") : ['playing', 'buffering'].includes(snapshot.status) ? 'Ⅱ PAUSE' : '▶ PLAY'}</button><button className="quiet" disabled={!ready || mismatch} onClick={restart}>{t("↺ 처음부터")}</button></div><span className="status" role="status">{statusLabels()[snapshot.status]}</span><span className="keyboard-help">{t("A D / ← → / Z X · Space 일시정지 · F 전체화면")}</span></div>
+    <div className="transport"><div className="transport-buttons"><button id="play-button" className="primary" disabled={!ready || mismatch} onClick={togglePlayback}>{snapshot.status === 'ended' ? t("다시 PLAY") : ['playing', 'buffering'].includes(snapshot.status) ? 'Ⅱ PAUSE' : '▶ PLAY'}</button><button className="quiet" disabled={!ready || mismatch} onClick={restart}>{t("↺ 처음부터")}</button></div><span className="status" role="status">{statusLabels()[snapshot.status]}</span><span className="keyboard-help">{t("★ A / ← / Z · ◆ D / → / X · Space 일시정지 · F 전체화면")}</span></div>
     {snapshot.status === 'ended' && <div className="result"><strong>{t("끝까지 잘 들었어요.")}</strong><span>{t("최대 콤보")}{snapshot.maxCombo} · HIT {snapshot.hits} / {chart.notes.length}{snapshot.practice ? t(" · 탐색한 연습 세션") : ''}</span></div>}
     {error && <div className="error" role="alert">{error} <a href="/">{t("돌아가기")}</a></div>}
     {notice && <p className="notice" role="status">{notice}</p>}
