@@ -40,7 +40,7 @@ export function Creator() {
       if (abort.signal.aborted) return;
       setIdentity({ videoId: videoId ?? '', title: title.trim(), id: `auto-${crypto.randomUUID()}` });
       drafts.current = {}; setDifficulty('easy'); setAnalysis(result);
-      setUseVideo(false);
+      setUseVideo(Boolean(videoId));
     } catch (error) { if (!abort.signal.aborted) setError(error instanceof Error ? t(error.message) : t("분석하지 못했습니다.")); }
     finally { if (controller.current === abort) { setWorking(false); controller.current = null; } }
   }

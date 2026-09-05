@@ -107,7 +107,7 @@ try {
   await page.locator('#creator-audio').setInputFiles({ name: 'private.wav', mimeType: 'audio/wav', buffer: wav(4) });
   await page.getByRole('button', { name: '만들고 플레이' }).click();
   await page.getByRole('heading', { name: '준비됐어요. 플레이해 보세요.' }).waitFor();
-  await page.getByRole('checkbox', { name: '음악 파일 대신' }).check();
+  assert.equal(await page.getByRole('checkbox', { name: '음악 파일 대신' }).isChecked(), true, 'Linked video is selected by default');
   await page.locator('#play-button').click();
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).status === 'playing');
   assert.equal(await page.locator('iframe').count(), 1);
