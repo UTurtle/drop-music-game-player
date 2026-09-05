@@ -48,6 +48,18 @@ try {
   assert.equal((await state()).layout.vertical, false);
   assert.equal((await state()).score, 1000, 'Rotation must preserve gameplay');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.goto(`${base}/practice?test=1`);
+  await page.locator('#play-button').click();
+  await advance(2000); await page.keyboard.press('a');
+  await page.keyboard.press('z');
+  assert.equal((await state()).score, 0, 'Alias spam must incur a penalty');
+  assert.equal((await state()).combo, 0);
+  assert.equal((await state()).emptyHits, 1);
+  await page.keyboard.press('x');
+  assert.equal((await state()).score, -1000, 'Penalties must persist below zero');
+  await page.screenshot({ path: `${output}/empty-hit.png`, fullPage: true });
+  await advance(1000); await page.keyboard.press('d');
+  assert.equal((await state()).hits, 2, 'A bad press must not consume the next note');
   assert.deepEqual(errors, []);
   await writeFile(`${output}/report.json`, JSON.stringify({ passed: ['EN/KO switch and persistence', 'All three key pairs score', 'Pause, misses, restart, end and Hard', 'Language switch preserves session', 'Mobile has no horizontal overflow'], pageErrors: errors }, null, 2));
   console.log('Practice game and bilingual UI passed');

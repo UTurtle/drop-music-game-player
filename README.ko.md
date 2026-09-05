@@ -92,3 +92,5 @@ npm run test:e2e
 `test:v1`은 5191 포트에 격리된 서버를 띄워 실제 WAV 재생·생성·조작·개인 세션과 업로드 차단을 검증합니다. `test:e2e`는 연습 게임과 EN/KO 화면을 검증합니다. 기존 Chromium이 있다면 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`로 지정할 수 있습니다.
 
 [구조 설명](docs/architecture.ko.md) · [기여 안내](CONTRIBUTING.md) · [라이선스](LICENSE)
+
+노트가 없는 타이밍에 누르면 콤보가 끊기고 1,000점이 차감됩니다. 점수는 음수가 될 수 있으며, 박자에 맞춘 연타는 정상 판정합니다.

@@ -6,10 +6,11 @@ import { parseChart, parseYouTubeUrl, practiceChart } from '../src/chart';
 test('physical lanes, timing windows, repeated hit, missed-note combo reset', () => {
   const engine = new GameEngine(practiceChart('easy'));
   engine.setStatus('playing'); engine.update(2000); engine.hit('D');
-  assert.equal(engine.snapshot.score, 0);
+  assert.equal(engine.snapshot.score, -1000);
   engine.hit('A'); engine.hit('A');
-  assert.equal(engine.snapshot.score, 1000); assert.equal(engine.snapshot.hits, 1);
-  engine.update(3075); engine.hit('D'); assert.equal(engine.snapshot.score, 1700);
+  assert.equal(engine.snapshot.score, -1000); assert.equal(engine.snapshot.hits, 1);
+  assert.equal(engine.snapshot.emptyHits, 2); assert.equal(engine.snapshot.combo, 0);
+  engine.update(3075); engine.hit('D'); assert.equal(engine.snapshot.score, -300);
   engine.update(4200); assert.equal(engine.snapshot.misses, 1); assert.equal(engine.snapshot.combo, 0);
 });
 test('paused and buffering clocks cannot score or accrue misses; resume and restart work', () => {
@@ -37,4 +38,35 @@ test('chart validation rejects unsafe IDs, NaN, duplicates, negative offsets; st
   for (const patch of [{ chartId: '../bad' }, { offsetMs: NaN }, { offsetMs: -3000 }, { revision: 0 }, { notes: [{ timeMs: 1, lane: 'A' }, { timeMs: 1, lane: 'D' }] }]) assert.throws(() => parseChart({ ...chart, ...patch }));
   const parsed = parseChart({ ...chart, audio: 'private payload', localPath: '/private/song.wav' });
   assert.equal('audio' in parsed, false); assert.equal('localPath' in parsed, false);
+});
+
+test('mashing both lanes loses points; accurate rapid same-lane hits remain playable', () => {
+  const chart = { ...practiceChart('hard'), notes: [
+    { timeMs: 1000, lane: 'A' as const }, { timeMs: 1200, lane: 'A' as const },
+    { timeMs: 1400, lane: 'A' as const }, { timeMs: 1600, lane: 'D' as const },
+  ] };
+  const precise = new GameEngine(chart);
+  precise.setStatus('playing');
+  for (const note of chart.notes) { precise.update(note.timeMs); precise.hit(note.lane); }
+  assert.equal(precise.snapshot.score, 4000);
+  assert.equal(precise.snapshot.combo, 4);
+  assert.equal(precise.snapshot.emptyHits, 0);
+  const spam = new GameEngine(chart);
+  spam.setStatus('playing');
+  for (let time = 800; time <= 1800; time += 50) {
+    spam.update(time); spam.hit('A'); spam.hit('D');
+  }
+  assert.ok(spam.snapshot.score < 0);
+  assert.ok(spam.snapshot.emptyHits > spam.snapshot.hits);
+  assert.equal(spam.snapshot.combo, 0);
+  spam.reset(); assert.equal(spam.snapshot.emptyHits, 0);
+});
+test('inactive input never incurs penalties or consumes notes', () => {
+  const engine = new GameEngine(practiceChart('easy'));
+  for (const status of ['ready', 'paused', 'buffering', 'ended', 'error'] as const) {
+    engine.setStatus(status); engine.hit('A'); engine.hit('D');
+    assert.equal(engine.snapshot.score, 0);
+    assert.equal(engine.snapshot.emptyHits, 0);
+    assert.equal(engine.snapshot.judged.size, 0);
+  }
 });

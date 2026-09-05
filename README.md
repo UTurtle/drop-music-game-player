@@ -92,3 +92,5 @@ npm run test:e2e
 `test:v1` starts an isolated server on port 5191 and verifies real local WAV playback, generation, controls, private-session behavior and blocked uploads. `test:e2e` exercises the practice game and EN/KO UI. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if using an existing Chromium installation.
 
 [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
+
+Empty presses break your combo and deduct 1,000 points, including below zero. Rapid notes still accept correctly timed presses.
