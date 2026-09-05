@@ -18,13 +18,13 @@ function localDuration(file: File, signal: AbortSignal): Promise<number> {
   });
 }
 
-export async function analyzeLocalFile(file: File, signal: AbortSignal, onProgress: (value: number) => void): Promise<Analysis> {
+export async function decodeLocalFile(file: File, signal: AbortSignal, onProgress: (value: number) => void, sampleRate = SAMPLE_RATE): Promise<Float32Array> {
   if (!/\.(wav|mp3|flac)$/i.test(file.name) || !file.size || file.size > MAX_AUDIO_BYTES) throw new Error(t("50 MB 이하의 WAV/MP3/FLAC 파일을 선택해 주세요."));
   checkCanceled(signal); onProgress(1);
   const duration = await localDuration(file, signal);
   if (!Number.isFinite(duration) || duration < 1 || duration > 600) throw new Error(t("1초~10분 길이의 음원을 선택해 주세요."));
   checkCanceled(signal);
-  const context = new OfflineAudioContext(1, 1, SAMPLE_RATE);
+  const context = new OfflineAudioContext(1, 1, sampleRate);
   let decoded: AudioBuffer;
   try { decoded = await context.decodeAudioData(await file.arrayBuffer()); }
   catch { throw new Error(t("음원을 디코딩하지 못했습니다. PCM WAV 또는 다른 MP3 파일을 선택해 주세요.")); }
@@ -36,6 +36,12 @@ export async function analyzeLocalFile(file: File, signal: AbortSignal, onProgre
     for (let i = 0; i < pcm.length; i++) pcm[i] += source[i] / decoded.numberOfChannels;
   }
   onProgress(8);
+  return pcm;
+}
+
+export async function analyzeLocalFile(file: File, signal: AbortSignal, onProgress: (value: number) => void, includeHard = true): Promise<Analysis> {
+  const pcm = await decodeLocalFile(file, signal, onProgress);
+  checkCanceled(signal);
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./analysis.worker.ts', import.meta.url), { type: 'module' });
     const cleanup = () => { worker.terminate(); signal.removeEventListener('abort', cancel); };
@@ -47,6 +53,6 @@ export async function analyzeLocalFile(file: File, signal: AbortSignal, onProgre
       else { cleanup(); reject(new Error(event.data.message)); }
     };
     worker.onerror = () => { cleanup(); reject(new Error(t("분석 작업을 실행하지 못했습니다. 새로고침 후 다시 시도해 주세요."))); };
-    worker.postMessage({ pcm, sampleRate: SAMPLE_RATE }, [pcm.buffer]);
+    worker.postMessage({ pcm, sampleRate: SAMPLE_RATE, includeHard }, [pcm.buffer]);
   });
 }

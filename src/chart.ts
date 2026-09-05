@@ -1,6 +1,6 @@
 import { t } from './i18n';
 export type Lane = 'A' | 'D';
-export type Difficulty = 'easy' | 'hard';
+export type Difficulty = 'easy' | 'normal' | 'hard';
 export interface Note { timeMs: number; lane: Lane }
 export interface Chart {
   schemaVersion: 1;
@@ -35,7 +35,7 @@ export function parseChart(value: unknown): Chart {
       !integer(value.revision, 1, 1_000_000) ||
       typeof value.videoId !== 'string' || (value.videoId !== '' && !videoPattern.test(value.videoId)) ||
       typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 ||
-      !['easy', 'hard'].includes(String(value.difficulty)) ||
+      !['easy', 'normal', 'hard'].includes(String(value.difficulty)) ||
       !['manual', 'algorithmic'].includes(String(value.provenance)) ||
       !['instant', 'community'].includes(String(value.quality)) ||
       !integer(value.offsetMs, -120_000, 120_000) ||
@@ -69,7 +69,7 @@ export function parseCatalog(value: unknown): CatalogEntry[] {
   return value.map(entry => {
     if (!record(entry) || typeof entry.chartId !== 'string' || !chartIdPattern.test(entry.chartId) ||
         !integer(entry.revision, 1, 1_000_000) || typeof entry.videoId !== 'string' || !videoPattern.test(entry.videoId) ||
-        typeof entry.title !== 'string' || entry.title.length > 200 || !['easy', 'hard'].includes(String(entry.difficulty))) {
+        typeof entry.title !== 'string' || entry.title.length > 200 || !['easy', 'normal', 'hard'].includes(String(entry.difficulty))) {
       throw new Error(t("채보 목록에 잘못된 항목이 있습니다."));
     }
     return { chartId: entry.chartId, revision: entry.revision, videoId: entry.videoId, title: entry.title, difficulty: entry.difficulty as Difficulty,
@@ -107,7 +107,7 @@ export async function fetchJson(path: string, signal?: AbortSignal): Promise<unk
   try { return JSON.parse(body); } catch { throw new Error(t("채보 JSON을 읽을 수 없습니다.")); }
 }
 export function practiceChart(difficulty: Difficulty): Chart {
-  const step = difficulty === 'easy' ? 1000 : 500;
+  const step = difficulty === 'easy' ? 1000 : difficulty === 'normal' ? 750 : 500;
   return {
     schemaVersion: 1, chartId: `practice-${difficulty}`, revision: 1, videoId: '00000000000',
     title: 'First contact', difficulty, provenance: 'manual', quality: 'community',

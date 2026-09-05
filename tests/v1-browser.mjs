@@ -60,7 +60,8 @@ try {
   page.on('request', request => { if (request.postDataBuffer()) outboundBodies.push(request.url()); });
   const state = () => page.evaluate(() => JSON.parse(window.render_game_to_text()));
   await page.goto(`${base}/create`);
-  assert.equal(await page.getByRole('checkbox').count(), 0);
+  assert.equal(await page.getByRole('checkbox').count(), 1);
+  await page.getByRole('checkbox').check(); // Exercise optional Hard generation.
   assert.equal(await page.locator('#creator-url').getAttribute('required'), null);
   await page.locator('#creator-title').fill('My private song');
   await page.locator('#creator-audio').setInputFiles({ name: 'silence.wav', mimeType: 'audio/wav', buffer: wav(2, true) });
@@ -99,8 +100,9 @@ try {
   assert.equal(outboundBodies.length, 0, 'Private flow must not send audio or charts');
   reports.push('No video or public consent required; silence rejected; actual local audio advances, pauses, restarts, scores Z and ends; Hard plays; no upload requests');
   await page.reload();
-  assert.equal(await page.locator('#creator-audio').inputValue(), '');
-  assert.equal(await page.locator('#play-button').count(), 0);
+  await page.locator('#play-button').waitFor();
+  assert.equal(await page.locator('#creator-audio').count(), 0);
+  await page.goto(`${base}/create`);
   await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({ contentType: 'application/javascript', body: fakeYoutube }));
   await page.locator('#creator-url').fill('https://youtu.be/abcdefghijk');
   await page.locator('#creator-title').fill('Optional video');
@@ -138,7 +140,13 @@ try {
   const rejected = await fetch(`${base}/api/charts`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ rightsConfirmed: true, alignmentConfirmed: true }) });
   assert.equal(rejected.status, 403);
   assert.deepEqual(await (await fetch(`${base}/api/charts`)).json(), []);
-  reports.push('Reload clears private session; optional video and local playback can switch; mobile fits; public API disabled');
+  reports.push('Reload restores locally saved audio and charts; optional video and local playback can switch; mobile fits; public API disabled');
+  const modelUpload = await fetch(`${base}/api/model`, { method: 'POST', body: 'no audio uploads' });
+  assert.equal(modelUpload.status, 403);
+  await page.goto(`${base}/create`);
+  assert.equal(await page.locator('#gpu-device-key').count(), 0);
+  await page.getByRole('button', { name: '저장된 모델 삭제' }).waitFor();
+  reports.push('No access-key UI; model/audio upload API disabled; browser model cache controls present');
   assert.deepEqual(pageErrors, []);
   await writeFile(`${output}/report.json`, JSON.stringify({ passed: reports, pageErrors, audioUploaded: false, publishingEnabled: false }, null, 2));
   console.log(reports.join('\n'));

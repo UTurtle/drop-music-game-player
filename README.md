@@ -3,15 +3,14 @@
 
 # DROP
 
-**My favorite songs weren’t in rhythm games. So I made this.**
+**Turn your own music into a rhythm game.**
 
 [English](README.md) · [한국어](README.ko.md)
 
-Pick an audio file, choose Easy or Hard, and play with two keys. Add an optional video link if you want to watch along. DROP runs locally in your browser; there is no music upload or public chart publishing.
+Pick an audio file, choose Easy or Normal (Hard generation is optional), and play with two keys. Add an optional video link if you want to watch along. All analysis runs in your browser; audio is never uploaded and there is no public chart publishing.
 
-[Try the temporary demo](https://music-player.ludo-demo.com) · [Use your own music](https://music-player.ludo-demo.com/create)
 
-The demo may go offline. Local execution is the main way to use this project.
+Local execution is the main way to use this project.
 
 ![Practice gameplay with large two-key lanes](docs/images/play.png)
 
@@ -42,7 +41,7 @@ Stop the existing server before using the same port. `DROP_PORT` changes the por
 1. Open **Play my music**.
 2. Select a WAV, MP3 or FLAC file (up to 50 MB, 1 second–10 minutes).
 3. Enter a title. A video link is optional.
-4. Press **Make & play**, then choose Easy or Hard.
+4. Press **Make & play**, then choose Easy or Normal (Hard generation is optional).
 5. Press **PLAY** and hit notes as they reach the line.
 
 | Action | Keys |
@@ -60,24 +59,32 @@ No file handy? **Practice** uses original synthesized audio included as code.
 
 ## Optional video
 
-Video links currently support **YouTube’s official embedded player**, with its own audio. The linked video and local audio are alternative playback sources, not mixed tracks. After generation, select **Play the linked video instead of my audio file**. Internet access and an embeddable video are required.
+Video links currently support **YouTube’s official embedded player**, with its own audio. The linked video and local audio are alternative playback sources, not mixed tracks. For newly generated songs with a linked video, the default is **Play the linked video instead of my audio file**. Internet access and an embeddable video are required.
 
 Generation still needs your local audio file. DROP does not download videos, capture streams or extract audio. If the video has a different intro, adjust the video offset. An offset cannot fix cuts or inserts in the middle of a song.
 
 ## Where does my music go?
 
-- File decoding, chart generation and playback happen in your browser.
-- Audio and charts stay in page memory. **Refreshing or closing the page clears the session.** There is no saved library yet.
-- There are no accounts, audio uploads, chart publishing, rankings or analytics trackers.
-- The local server serves the application. No database is required.
+- DSP, WebGPU AI generation and playback happen in your browser. Audio is never uploaded.
+- Generated Easy / Normal / optional Hard charts and the selected audio are automatically saved in this browser’s **My library** (IndexedDB). Replay or delete them there. No server upload or cross-device sync. Clearing site data or browser storage eviction can remove them; keep your original files.
+- There are no accounts, public audio hosting, chart publishing, rankings or analytics trackers.
+- The local server serves application and optional model files. No database or audio upload API is required.
 - Optional video playback connects to YouTube. The public demo’s tunnel/hosting provider can process ordinary connection metadata; local audio-only play does not require that demo.
 - Installing dependencies requires internet access. After installation and a build, local audio-only play works without internet access while the local server is running.
 
+## Library and chart sharing
+
+Best scores are saved per difficulty in this browser, with PERFECT and FULL COMBO achievements. Judgment effects distinguish PERFECT, GOOD and OK. The play screen uses a compact dark layout.
+
+Export one chart as `.drop-chart`, or the library as `.drop-charts`. Exports contain chart metadata only: **no audio, original filenames or scores**. Multiple files can be imported together. Connect your own authorized audio file to an imported chart to play without regenerating it; imported songs default to local audio playback. Duration checks cannot establish that it is the same recording or edit—check synchronization yourself.
+
+Legacy audio-containing `.drop-song` / `.drop-library` imports are not supported. Existing locally saved songs remain available. Delete-all requires confirmation and removes local library data, not your original files or model cache.
+
 ## Expectations
 
-The v3 generator uses onset brightness, accents and short phrase patterns, including repeat hits. Easy caps same-side runs at two; Hard at three, with very fast events alternating to avoid excessive one-hand bursts. Existing sessions must be regenerated to use these rules.
+The fallback v3 DSP generator uses onset brightness, accents and short phrase patterns, including repeat hits. Easy caps same-side runs at two; Hard at three, with very fast events alternating to avoid excessive one-hand bursts. Existing sessions must be regenerated to use these rules.
 
-Automatic charts are rough DSP-generated drafts, not hand-mapped charts. They can miss musical accents or feel repetitive. Real-song quality and synchronization vary; the automated tests use synthetic audio and mocked video events. There is no model training, and this is a hobby project, not a commercial service.
+Automatic charts are AI-generated or DSP drafts, not hand-mapped charts. They can miss musical accents or feel repetitive. Real-song quality and synchronization vary; the automated tests use synthetic audio and mocked video events. There is no model training, and this is a hobby project, not a commercial service.
 
 Use music you created or files you have the necessary rights to use. The MIT license covers this project’s code, **not third-party music, videos or platform permissions**. No copyrighted songs or videos are bundled. See [YouTube terms](https://www.youtube.com/t/terms) and [Google privacy policy](https://policies.google.com/privacy) for optional video playback.
 
@@ -99,3 +106,17 @@ npm run test:e2e
 Empty presses break your combo and deduct 1,000 points, including below zero. Rapid notes still accept correctly timed presses.
 
 Repeated two-bar phrases are compared by onset spacing, relative strength and brightness. Close matches reuse hand patterns while preserving note times and run limits. This is a conservative recurrence heuristic, not chorus/verse recognition; tempo drift, different arrangements and phrase boundaries may prevent a match. Regenerate the chart to apply it.
+
+## Optional browser AI
+
+The create page offers **Download model** before downloading any weights. It displays the exact combined size of model and runtime files (about 133 MB for the current build). Downloads consume network data and browser storage; inference requires additional RAM/VRAM.
+
+After downloading, a compatible WebGPU device uses the saved **Mapperatorinator v32-mini FP16** model. Unsupported devices, missing/evicted files, or failed/empty model results use browser DSP. No audio leaves the browser, and no access key, Python environment or CUDA installation is needed to play.
+
+**Delete saved model** removes DROP model caches only. It preserves language settings and other applications’ caches. Partial downloads are removed on cancellation, checksum mismatch or failure. A deleted/evicted model is not downloaded again without clicking the download button. Browsers may evict cached files under storage pressure.
+
+This is an experimental conversion of a small pretrained chart model, not a dedicated chorus recognizer. Accuracy and playability vary by song. FP16 was chosen because tested four-bit weights degraded predictions. Easy/Normal and optional Hard use separate difficulty prompts; if Easy has no supported circles it is simplified from Normal; taiko circles keep their timing and don/kat type. Rolls and spinners are omitted. The browser port uses deterministic decoding and overlapping audio windows; it does not promise identical results to upstream Python inference.
+
+### Maintaining the model assets
+
+Model binaries stay out of Git. The optional maintainer script `scripts/export-browser-model.py` exports the pinned checkpoint after upstream source and an isolated Python environment are prepared. It needs PyTorch, ONNX, ONNX Runtime, upstream dependencies, and the model snapshot; ordinary users do not. See [browser model notes](docs/browser-model.md) and [third-party notices](THIRD_PARTY_NOTICES.md). Without exported assets the app still supports DSP.

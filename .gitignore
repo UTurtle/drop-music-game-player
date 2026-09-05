@@ -23,3 +23,13 @@ data/
 .DS_Store
 .codex/
 .agents/
+
+.runtime/
+*.safetensors
+*.ckpt
+
+# Converted model/runtime assets are prepared separately, never committed.
+public/models/
+*.onnx
+logs/
+progress.md

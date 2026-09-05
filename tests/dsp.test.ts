@@ -19,6 +19,10 @@ test('browser DSP finds synthetic attacks, excludes silence, preserves input, an
   const original = audio.slice(); const result = analyzePcm(audio, SAMPLE_RATE);
   assert.deepEqual(result, analyzePcm(audio, SAMPLE_RATE)); assert.deepEqual(audio, original);
   assert.ok(result.easy.length > 10); assert.ok(result.hard.length > result.easy.length);
+  const defaultResult = analyzePcm(audio, SAMPLE_RATE, () => {}, false);
+  assert.deepEqual(defaultResult.hard, []);
+  assert.deepEqual(defaultResult.normal, result.normal);
+  assert.ok(result.normal!.length >= result.easy.length && result.normal!.length <= result.hard.length);
   for (const difficulty of ['easy', 'hard'] as const) {
     const notes = result[difficulty], limits = DENSITY[difficulty];
     assert.ok(notes.some((note, i) => i > 0 && note.lane === notes[i - 1].lane), 'Generated PCM charts need repeated hits, not forced alternation');

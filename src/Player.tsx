@@ -1,15 +1,19 @@
+import { SavedSongsPanel } from './SavedSongsPanel';
 import { t } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import { parseChart, playPath, type Chart, type Lane } from './chart';
 import { GameEngine, type Status } from './engine';
 import { createYouTube, PracticeMedia, LocalFileMedia, type Media } from './media';
 import { renderNotes, getPlayfieldLayout } from './render';
+import { completedRecord } from './songRecords';
+import { saveSongRecord } from './localLibrary';
 
 const keyLanes: Record<string, Lane> = { KeyA: 'A', ArrowLeft: 'A', KeyZ: 'A', KeyD: 'D', ArrowRight: 'D', KeyX: 'D' };
 
 const statusLabels = (): Record<Status, string> => ( { ready: 'READY WHEN YOU ARE', playing: 'NOW PLAYING', paused: 'PAUSED', buffering: t("BUFFERING — 판정 대기"), ended: 'SESSION COMPLETE', error: 'PLAYBACK UNAVAILABLE' });
-export function Player({ chart, practice = false, imported = false, onDraftChange, audioFile }: {
+export function Player({ chart, practice = false, imported = false, onDraftChange, audioFile, savedSongId }: {
   chart: Chart; audioFile?: File; practice?: boolean; imported?: boolean;
+  savedSongId?: string;
   onDraftChange?: (chart: Chart) => void;
 }) {
   const [offset, setOffset] = useState(chart.offsetMs);
@@ -28,6 +32,20 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
   const restarting = useRef(false);
   const lastSample = useRef({ media: 0, wall: 0 });
   const [snapshot, setSnapshot] = useState(engine.current.snapshot);
+  const [recordStatus, setRecordStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'practice'>('idle');
+  const [recordAttempt, setRecordAttempt] = useState(0);
+  useEffect(() => {
+    if (snapshot.status !== 'ended' || !savedSongId || practice) { setRecordStatus('idle'); return; }
+    const record = completedRecord(activeChart.current, engine.current.snapshot);
+    if (!record) { setRecordStatus('practice'); return; }
+    let active = true;
+    setRecordStatus('saving');
+    void saveSongRecord(savedSongId, activeChart.current, record).then(() => {
+      window.dispatchEvent(new Event('drop-library-updated'));
+      if (active) setRecordStatus('saved');
+    }).catch(() => { if (active) setRecordStatus('error'); });
+    return () => { active = false; };
+  }, [snapshot.status, savedSongId, practice, chart, recordAttempt]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -185,6 +203,7 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
     catch { setNotice(url); }
   }
   const progress = Math.min(100, snapshot.timeMs / (chart.durationMs + Math.max(0, offset)) * 100);
+  const achievement = completedRecord(chart, snapshot);
   return <div className={`session ${practice || audioFile ? 'practice-session' : 'mv-session'}`} ref={container} tabIndex={-1}>
     <div className="session-heading"><div><span className="eyebrow">{audioFile ? t("나만 플레이") : practice ? 'SYNTH PRACTICE · ORIGINAL AUDIO' : imported ? 'LOCAL CHART PREVIEW' : 'MUSIC VIDEO SESSION'}</span><h1>{chart.title}</h1></div>
       <div className="session-actions"><span className="pill">{chart.difficulty.toUpperCase()}</span>{!audioFile && !imported && offset === chart.offsetMs && <button className="quiet" onClick={share}>{t("링크 공유 ↗")}</button>}</div></div>
@@ -193,12 +212,18 @@ export function Player({ chart, practice = false, imported = false, onDraftChang
         {practice || audioFile ? <div className={`practice-art ${snapshot.status === 'playing' ? 'is-playing' : ''}`}><span className="eyebrow">A LITTLE RHYTHM TO GET YOU STARTED</span><div className="record"><div className="record-label">DROP<span>01 / 120 BPM</span></div></div><div className="practice-caption"><strong>{audioFile ? chart.title : 'First contact'}</strong><span>{audioFile ? t("내 음악 파일로 재생 중") : t("합성 리듬 연습 · 실제 MV가 아닙니다")}</span></div></div>
           : <div className="youtube-host" ref={video} />}
       </div>
-      <aside className="scoreboard"><span className="eyebrow">YOUR SESSION</span><div><span className="stat-label">SCORE</span><strong className="score">{snapshot.score.toLocaleString('en-US', { minimumIntegerDigits: 6 })}</strong></div><div><span className="stat-label">COMBO</span><strong className="combo">{snapshot.combo}<small>×</small></strong></div><div className="verdict">{snapshot.verdict === 'EMPTY' ? t('헛입력 −1,000', 'EMPTY HIT −1,000') : snapshot.verdict || 'FEEL THE BEAT'}</div><div className="score-bottom"><span>{snapshot.hits} HIT</span><span>{snapshot.misses} MISS</span><span>{snapshot.emptyHits} {t("헛입력", "EMPTY")}</span></div></aside>
+      <aside className="scoreboard"><span className="eyebrow">YOUR SESSION</span><div><span className="stat-label">SCORE</span><strong className="score">{snapshot.score.toLocaleString('en-US', { minimumIntegerDigits: 6 })}</strong></div><div><span className="stat-label">COMBO</span><strong className="combo">{snapshot.combo}<small>×</small></strong></div><div className="max-combo-stat"><span className="stat-label">MAX COMBO</span><strong className="max-combo">{snapshot.maxCombo}<small>×</small></strong></div><div className="verdict">{snapshot.verdict === 'EMPTY' ? t('헛입력 −1,000', 'EMPTY HIT −1,000') : snapshot.verdict || 'FEEL THE BEAT'}</div><div className="score-bottom"><span>{snapshot.hits} HIT</span><span>{snapshot.misses} MISS</span><span>{snapshot.emptyHits} {t("헛입력", "EMPTY")}</span></div></aside>
+      <SavedSongsPanel chartId={chart.chartId} />
       <canvas ref={canvas} className="note-canvas" aria-label={t("왼쪽 A·왼쪽 화살표·Z, 오른쪽 D·오른쪽 화살표·X 두 레인 리듬게임. 노트가 판정선에 오면 해당 키를 누르세요.")} />
     </div>
     <div className="timeline"><div style={{ width: `${progress}%` }} /></div>
     <div className="transport"><div className="transport-buttons"><button id="play-button" className="primary" disabled={!ready || mismatch} onClick={togglePlayback}>{snapshot.status === 'ended' ? t("다시 PLAY") : ['playing', 'buffering'].includes(snapshot.status) ? 'Ⅱ PAUSE' : '▶ PLAY'}</button><button className="quiet" disabled={!ready || mismatch} onClick={restart}>{t("↺ 처음부터")}</button></div><span className="status" role="status">{statusLabels()[snapshot.status]}</span><span className="keyboard-help">{t("★ A / ← / Z · ◆ D / → / X · Space 일시정지 · F 전체화면")}</span></div>
     {snapshot.status === 'ended' && <div className="result"><strong>{t("끝까지 잘 들었어요.")}</strong><span>{t("최대 콤보")}{snapshot.maxCombo} · HIT {snapshot.hits} / {chart.notes.length} · {snapshot.emptyHits} {t("헛입력", "EMPTY")}{snapshot.practice ? t(" · 탐색한 연습 세션") : ''}</span></div>}
+    {achievement?.perfect ? <p className="session-achievement record-perfect">PERFECT</p> : achievement?.fullCombo ? <p className="session-achievement record-full-combo">FULL COMBO</p> : null}
+    {snapshot.status === 'ended' && recordStatus !== 'idle' && <p className="record-status" role="status">
+      {recordStatus === 'saving' ? t('기록 저장 중…', 'Saving your record…') : recordStatus === 'saved' ? t('최고 기록을 이 브라우저에 저장했습니다.', 'Best record saved in this browser.') : recordStatus === 'practice' ? t('탐색한 연습 세션은 최고 기록에 포함하지 않습니다.', 'Seeked practice sessions do not count toward best scores.') : t('기록을 저장하지 못했습니다. 보관함과 저장 공간을 확인해 주세요.', 'Could not save your record. Check your library and browser storage.')}
+      {recordStatus === 'error' && <button className="quiet" onClick={() => setRecordAttempt(value => value + 1)}>{t('기록 저장 재시도', 'Retry saving record')}</button>}
+    </p>}
     {error && <div className="error" role="alert">{error} <a href="/">{t("돌아가기")}</a></div>}
     {notice && <p className="notice" role="status">{notice}</p>}
     {!practice && !audioFile && <details className="alignment" ><summary>{t("제작자 · MV 싱크 조정")}</summary><p>{t("양수는 노트를 더 늦게 표시합니다. 조정하면 일시정지되며 점수가 초기화됩니다.")}</p><div className="offset-controls"><label htmlFor="offset">Video offset (ms)</label><input id="offset" type="number" min={-120000} max={120000} step={1} value={offset} onChange={event => changeOffset(Number(event.target.value))} /><input aria-label="Video offset slider" type="range" min={-120000} max={120000} step={10} value={offset} onChange={event => changeOffset(Number(event.target.value))} /><button className="quiet" onClick={() => changeOffset(offset - 10)}>−10 ms</button><button className="quiet" onClick={() => changeOffset(offset + 10)}>+10 ms</button></div><label className="check"><input type="checkbox" checked={mismatch} onChange={event => { setMismatch(event.target.checked); setAligned(false); media.current?.pause(); }} />{t("MV에 중간 삽입·삭제 등 원본 음원과 다른 편집이 있습니다.")}</label>{mismatch ? <p className="error">{t("지원하지 않는 편집 차이입니다. 동일한 편집본의 음원을 사용해 다시 생성해 주세요. 오프셋만으로는 맞출 수 없습니다.")}</p> : <label className="check"><input type="checkbox" checked={aligned} onChange={event => setAligned(event.target.checked)} />{t("처음·중간·끝에서 동일 편집본과 싱크를 확인했습니다.")}</label>}<div className="publish-controls"><button className="secondary" disabled={!aligned || mismatch} onClick={saveChart}>{t("채보 JSON 저장 ↓")}</button></div></details>}

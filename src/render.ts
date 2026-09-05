@@ -1,8 +1,9 @@
 import type { Chart, Lane } from './chart';
-import type { Snapshot } from './engine';
+import type { Snapshot, Judgment } from './engine';
+import { judgmentStyle } from './judgmentEffects';
 
-type Burst = { lane: Lane; born: number };
-type Effects = { hits: number; time: number; bursts: Burst[]; reduced: boolean; judged: ReadonlySet<number> };
+type Burst = Judgment & { born: number };
+type Effects = { lastId: number; time: number; bursts: Burst[]; reduced: boolean };
 const effects = new WeakMap<HTMLCanvasElement, Effects>();
 const chartSpacing = new WeakMap<Chart, number>();
 function minimumLaneSpacing(chart: Chart) {
@@ -55,25 +56,26 @@ export function renderNotes(canvas: HTMLCanvasElement, chart: Chart, state: Snap
   const spacing = minimumLaneSpacing(chart);
   const radius = Math.max(18, Math.min(48, band * .32, spacing / 1800 * travel * .8));
   let fx = effects.get(canvas);
-  if (!fx) { fx = { hits: state.hits, time: state.timeMs, bursts: [], judged: state.judged, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches }; effects.set(canvas, fx); }
-  if (state.timeMs < fx.time || state.hits < fx.hits) fx.bursts = [];
-  if (state.hits > fx.hits && !fx.reduced) {
-    // Newly judged notes close to the current clock identify successful hits, even after keyup.
-    chart.notes.forEach((note, index) => {
-      if (state.judged.has(index) && !fx.judged.has(index) && Math.abs(note.timeMs + chart.offsetMs - state.timeMs) <= 140) fx.bursts.push({ lane: note.lane, born: state.timeMs });
-    });
+  if (!fx) { fx = { lastId: 0, time: state.timeMs, bursts: [], reduced: false }; effects.set(canvas, fx); }
+  fx.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (state.timeMs < fx.time || state.feedback.length === 0) { fx.bursts = []; fx.lastId = 0; }
+  const now = performance.now();
+  for (const event of state.feedback) {
+    if (event.id > fx.lastId && state.timeMs - event.timeMs < 520) fx.bursts.push({ ...event, born: now });
+    fx.lastId = Math.max(fx.lastId, event.id);
   }
-  fx.hits = state.hits; fx.time = state.timeMs; fx.judged = state.judged;
-  fx.bursts = fx.bursts.filter(burst => state.timeMs - burst.born < 420).slice(-8);
+  fx.time = state.timeMs;
+  const elapsed = (burst: Burst) => Math.max(now - burst.born, state.timeMs - burst.timeMs);
+  fx.bursts = fx.bursts.filter(burst => elapsed(burst) < judgmentStyle(burst.verdict).duration).slice(-8);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  ctx.fillStyle = '#171c1a'; ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#07090b'; ctx.fillRect(0, 0, width, height);
   ctx.lineWidth = 1;
   for (const lane of ['A', 'D'] as const) {
     const { x, y } = centers[lane];
-    ctx.fillStyle = '#202824';
+    ctx.fillStyle = '#11161a';
     if (vertical) ctx.fillRect(x - band / 2, 0, band, height);
     else ctx.fillRect(0, y - band / 2, width, band);
-    ctx.strokeStyle = '#3d4a41'; ctx.setLineDash([3, 13]); ctx.beginPath();
+    ctx.strokeStyle = '#303b3d'; ctx.setLineDash([3, 13]); ctx.beginPath();
     if (vertical) { ctx.moveTo(x, 0); ctx.lineTo(x, target); }
     else { ctx.moveTo(target, y); ctx.lineTo(width, y); }
     ctx.stroke(); ctx.setLineDash([]);
@@ -87,8 +89,7 @@ export function renderNotes(canvas: HTMLCanvasElement, chart: Chart, state: Snap
   for (const lane of ['A', 'D'] as const) {
     ctx.save(); ctx.translate(centers[lane].x, centers[lane].y);
     ctx.strokeStyle = colors[lane]; ctx.lineWidth = 3;
-    ctx.fillStyle = pressed.has(lane) ? colors[lane] : '#171c1a';
-    if (pressed.has(lane)) { ctx.shadowColor = colors[lane]; ctx.shadowBlur = 9; }
+    ctx.fillStyle = pressed.has(lane) ? '#26362e' : '#080c0f';
     shape(ctx, lane, radius); ctx.fill(); ctx.stroke();
     ctx.restore();
   }
@@ -115,13 +116,22 @@ export function renderNotes(canvas: HTMLCanvasElement, chart: Chart, state: Snap
     shape(ctx, note.lane, radius * .65); ctx.stroke(); ctx.restore();
   });
   for (const burst of fx.bursts) {
-    const age = (state.timeMs - burst.born) / 420;
-    ctx.save(); ctx.globalAlpha = (1 - age) * .85; ctx.strokeStyle = colors[burst.lane]; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(centers[burst.lane].x, centers[burst.lane].y, 24 + age * 70, 0, Math.PI * 2); ctx.stroke();
-    for (let i = 0; i < 8; i++) {
-      const angle = i * Math.PI / 4;
-      ctx.save(); ctx.translate(centers[burst.lane].x + Math.cos(angle) * (25 + age * 85), centers[burst.lane].y + Math.sin(angle) * (25 + age * 70));
-      ctx.rotate(angle + age); ctx.fillStyle = colors[burst.lane]; shape(ctx, burst.lane, 5 * (1 - age) + 2); ctx.fill(); ctx.restore();
+    const style = judgmentStyle(burst.verdict, fx.reduced), age = elapsed(burst) / style.duration;
+    const center = centers[burst.lane];
+    const effectReach = Math.max(radius, Math.min(center.x - 8, width - center.x - 8, center.y - 8, height - center.y - 30, vertical ? band * .65 : band * .6));
+    ctx.save(); ctx.globalAlpha = (1 - age) * .95; ctx.strokeStyle = style.color; ctx.lineWidth = 2;
+    for (let ring = 0; ring < style.rings; ring++) {
+      ctx.beginPath(); ctx.arc(center.x, center.y, Math.min(effectReach, radius * (.7 + ring * .35) + age * 65 * style.scale), 0, Math.PI * 2); ctx.stroke();
+    }
+    for (let i = 0; i < style.particles; i++) {
+      const angle = i * Math.PI * 2 / style.particles, reach = Math.min(effectReach, radius + age * 90 * style.scale);
+      ctx.save(); ctx.translate(center.x + Math.cos(angle) * reach, center.y + Math.sin(angle) * reach);
+      ctx.rotate(angle + age); ctx.fillStyle = style.color; shape(ctx, burst.lane, (5 * (1 - age) + 1) * style.scale); ctx.fill(); ctx.restore();
+    }
+    // Only the newest label per lane: fast streams remain readable, not stacked words.
+    if (!fx.bursts.some(other => other.lane === burst.lane && other.id > burst.id)) {
+      ctx.textAlign = 'center'; ctx.font = `${burst.verdict === 'PERFECT' ? 800 : 600} ${vertical ? 13 : 15}px system-ui`;
+      ctx.fillStyle = style.color; ctx.fillText(style.label, center.x, Math.max(17, center.y - radius - 18 - (fx.reduced ? 0 : age * 9)));
     }
     ctx.restore();
   }

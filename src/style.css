@@ -204,7 +204,7 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .session, .back-row { max-width: none; }
 .session-heading { margin-bottom: 14px; }
 .session-heading h1 { font-size: clamp(30px, 3vw, 44px); }
-.note-canvas { height: clamp(300px, 42svh, 560px); }
+.note-canvas { height: clamp(180px, 25.2svh, 336px); }
 .keyboard-help { display: block; font-size: 13px; color: #536148; }
 .scoreboard { padding: 20px; gap: 12px; }
 .score { font-size: 36px; }
@@ -225,11 +225,14 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .practice-session .combo { font-size: 42px; letter-spacing: -2px; }
 .practice-session .score { margin-top: 0; }
 .practice-session .score-bottom { gap: 20px; border: 0; padding: 0; }
-.practice-session .note-canvas { height: clamp(330px, calc(100svh - 530px), 900px); }
+.practice-session .note-canvas { height: clamp(198px, calc(60svh - 318px), 540px); }
 @media (min-width: 601px) {
   .mv-session { max-width: 1100px; margin-inline: auto; }
 }
 @media (max-width: 600px) {
+  .session .stage { grid-template-columns: minmax(0, 1fr); }
+  .session .stage > * { min-width: 0; }
+  .session.mv-session .video-area { aspect-ratio: auto; height: max(200px, calc((100vw - 22px) * 9 / 16)); }
   body:has(.session) main, body:has(.session) .site-header { width: calc(100% - 20px); }
   .practice-session .scoreboard { padding: 12px; gap: 12px; }
   .practice-session .score-bottom { display: none; }
@@ -351,6 +354,125 @@ html[lang=ko] .hero h1 { font-size: clamp(38px, 4.2vw, 58px); line-height: 1.2; 
     width: min(100%, calc((100svh - 420px) * 16 / 9));
     justify-self: center;
   }
-  .mv-session:fullscreen .note-canvas { height: 240px; }
+  .mv-session:fullscreen .note-canvas { height: 144px; }
   .mv-session:fullscreen .scoreboard { min-height: 68px; padding-block: 8px; }
 }
+
+.browser-model-settings { border-top: 1px solid #bec8af; margin-top: 24px; padding-top: 24px; font-size: 16px; line-height: 1.55; }
+.browser-model-settings p { margin: 10px 0; }
+.browser-model-settings small { display: block; margin-top: 12px; opacity: .8; }
+.model-cache-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.model-cache-actions button { padding: 12px 18px; border: 1px solid #82945c; border-radius: 6px; background: #f7f7ef; color: #263023; cursor: pointer; }
+.model-cache-actions button:disabled { opacity: .5; cursor: default; }
+
+.local-library { max-width: 1100px; margin: 2rem auto; }
+.local-library > p { line-height: 1.7; }
+.library-list { list-style: none; padding: 0; margin: 2rem 0; }
+.library-list li { display: flex; align-items: center; gap: 1rem; padding: 1.5rem 0; border-bottom: 1px solid var(--line, #cbd1be); }
+.library-list li > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.library-list h2 { margin: 0; font-size: 1.4rem; }
+.library-list p { margin: .5rem 0; }
+@media (max-width: 650px) { .library-list li { flex-wrap: wrap; } .library-list li > div { flex-basis: 100%; } }
+
+/* Session rails: tall score column, unobstructed player, local song list. */
+.max-combo { display: block; font: 500 36px 'Space Grotesk', sans-serif; }
+.max-combo small { font-size: 20px; margin-left: 6px; color: #849174; }
+.saved-songs-panel { background: #e5e9dd; color: #263024; padding: 20px; min-width: 0; }
+.saved-songs-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.saved-songs-heading h2 { font-size: 17px; margin: 0; }
+.saved-songs-heading > span { font-size: 13px; color: #67735b; }
+.saved-songs-panel > p { font-size: 14px; line-height: 1.6; }
+.saved-songs-panel ul { list-style: none; padding: 0; margin: 20px 0; overflow-y: auto; min-height: 0; }
+.saved-songs-panel li a { display: block; padding: 14px 10px; border-bottom: 1px solid #c7d0bb; border-left: 3px solid transparent; }
+.saved-songs-panel li a:hover, .saved-songs-panel li a[aria-current] { background: #d5dfc5; border-left-color: #80964c; }
+.saved-songs-panel strong { display: block; overflow-wrap: anywhere; font-size: 15px; }
+.saved-songs-panel li span { display: block; font-size: 12px; color: #67735b; margin-top: 7px; }
+.saved-songs-manage { display: block; font-size: 13px; padding-top: 14px; }
+.song-records { margin-top: 12px; display: grid; gap: 7px; }
+.song-record-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; font-size: 12px; line-height: 1.5; }
+.saved-songs-panel .song-record-line span { display: inline; margin: 0; font-size: inherit; }
+.song-record-line .record-level { min-width: 30px; color: #53633d; }
+.song-record-line .record-score { font-variant-numeric: tabular-nums; color: #263024; }
+.record-perfect { color: #536b27; font-size: 10px; letter-spacing: .04em; font-weight: 700; }
+.record-status { line-height: 1.6; }
+.record-status button { margin-left: 12px; }
+.record-full-combo { color: #455ca0; font-size: 10px; letter-spacing: .02em; }
+.session-achievement { font-size: 22px; letter-spacing: .1em; margin-block: 14px; }
+.song-import { margin: 24px 0; padding: 20px; border: 1px solid #c7d0bb; }
+.song-import p { max-width: 68ch; font-size: 13px; line-height: 1.7; }
+.transfer-picker { display: inline-block; position: relative; padding: 12px 18px; cursor: pointer; }
+.transfer-picker input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.transfer-picker:focus-within { outline: 2px solid #60773d; outline-offset: 3px; }
+.song-export { min-width: 0; }
+.song-export .quiet { padding: 10px 0; font-size: 13px; }
+.song-export p { font-size: 12px; line-height: 1.5; }
+/* Preserve the official player's complete viewport; YouTube handles letterboxing. */
+.mv-session .video-area { min-height: 200px; }
+.mv-session .stage { border-radius: 0; }
+@media (max-width: 600px) {
+  .site-header, body:has(.session) .site-header { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: auto; padding: 12px 0; gap: 10px; }
+  .site-header > .logo { grid-column: 1 / 3; grid-row: 1; }
+  .site-header .header-links { display: contents; }
+  .site-header .language-switch { grid-column: 3; grid-row: 1; justify-self: end; }
+  .site-header .header-link { grid-row: 2; font-size: 11px; padding-block: 6px; text-align: center; }
+  .creator-preview-bar { margin-block: 12px; gap: 8px; }
+  .creator-preview-bar h2 { margin: 4px 0; font-size: 18px; }
+  .creator-preview-bar p { margin: 4px 0; }
+  .private-play-options { padding: 10px 12px; margin-bottom: 12px; font-size: 12px; }
+  .private-play-options p { margin-block: 4px; }
+  .session-heading h1 { font-size: 24px; line-height: 1.25; }
+  .session .scoreboard { padding: 10px 12px; gap: 6px 12px; }
+  .session .score, .session.practice-session .score { font-size: 23px; }
+  .session .combo, .session .max-combo { font-size: 26px; letter-spacing: 0; }
+  .session .scoreboard .verdict { font-size: 12px; min-height: 18px; height: auto; }
+  .session .stat-label { font-size: 10px; }
+  .note-canvas, .session.practice-session .note-canvas { height: clamp(168px, 24svh, 240px); }
+  .saved-songs-panel { padding: 14px; }
+  .song-import { padding: 14px; }
+  .library-list li { gap: 10px 20px; }
+  .library-list .song-export { flex: 0 1 auto; min-width: 110px; }
+  .transport-buttons button { min-height: 44px; }
+}
+@media (min-width: 1050px) {
+  .session.mv-session { max-width: none; }
+  .session .stage { grid-template-columns: 190px minmax(0, 1fr) 240px; grid-template-areas: 'score video songs' 'score notes songs'; grid-template-rows: auto auto; }
+  .session .video-area { grid-area: video; }
+  .session .note-canvas { grid-area: notes; min-width: 0; }
+  .session .scoreboard { grid-area: score; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 24px 18px; gap: 28px; }
+  .session .scoreboard > .eyebrow { display: block; }
+  .session .score { font-size: clamp(26px, 2.2vw, 36px); }
+  .session .combo { font-size: 54px; letter-spacing: -2px; }
+  .session .score-bottom { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #c7d0bb; padding-top: 18px; margin-top: auto; }
+  .session .saved-songs-panel { grid-area: songs; display: flex; flex-direction: column; }
+  .saved-songs-panel ul { flex: 1; max-height: 65svh; }
+  .session .verdict { height: auto; line-height: 1.5; }
+  .session.practice-session .note-canvas { height: clamp(216px, calc(60svh - 252px), 540px); }
+}
+@media (max-width: 1049px) {
+  .session .saved-songs-panel { grid-column: 1 / -1; grid-row: 4; }
+  .saved-songs-panel ul { max-height: 260px; }
+  .session .scoreboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .session .scoreboard > .eyebrow { display: none; }
+  .session .scoreboard .verdict { grid-column: 1 / -1; }
+  .session .score-bottom { grid-column: 1 / -1; }
+  .session .max-combo { font-size: 30px; }
+}
+
+.library-tools { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+.library-export { min-width: 0; flex: 1; }
+.library-export p { font-size: 13px; line-height: 1.6; }
+.library-export a { display: inline-block; overflow-wrap: anywhere; }
+.delete-all { color: #8b443a; border-bottom: 1px solid currentColor; }
+.hard-option { display: flex; gap: 10px; align-items: center; font-size: 14px; line-height: 1.6; }
+.creator-form .hard-option input { width: auto; flex: 0 0 auto; }
+.song-import [role] { overflow-wrap: anywhere; }
+.difficulty-switch { flex-wrap: wrap; }
+.transport { gap: 12px; }
+.transport-buttons { flex-wrap: wrap; }
+.transport-buttons button, .transport-buttons .quiet { white-space: nowrap; }
+.keyboard-help { word-break: keep-all; }
+.connect-audio { max-width: 720px; margin: 40px auto; }
+.connect-audio h1, .connect-audio .selected-audio { overflow-wrap: anywhere; }
+.connect-audio p { line-height: 1.7; }
+.connect-audio .check { display: flex; align-items: flex-start; gap: 10px; margin: 24px 0 12px; line-height: 1.6; }
+.connect-audio .check input { flex-shrink: 0; margin-top: 6px; }

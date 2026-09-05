@@ -5,8 +5,8 @@ export const SAMPLE_RATE = 22_050;
 export const HOP = 220;
 export const FFT_SIZE = 1024;
 export const BROWSER_GENERATOR = 'browser-flux-recurrence-v3';
-export const DENSITY = { easy: { gap: 300, perSecond: 3 }, hard: { gap: 140, perSecond: 6 } };
-export interface Analysis { durationMs: number; tempoBpm: number; easy: Note[]; hard: Note[] }
+export const DENSITY = { easy: { gap: 300, perSecond: 3 }, normal: { gap: 240, perSecond: 4 }, hard: { gap: 140, perSecond: 6 } };
+export interface Analysis { generator?: string; durationMs: number; tempoBpm: number; easy: Note[]; normal?: Note[]; hard: Note[] }
 
 /** In-place radix-2 FFT, used only on the selected local file's PCM. */
 export function fft(real: Float64Array, imaginary: Float64Array) {
@@ -89,7 +89,7 @@ export function assignLanes(events: Candidate[], difficulty: Difficulty, beatMs 
     : [['A', 'A', 'D', 'A', 'D', 'D', 'A', 'D'], ['A', 'D', 'D', 'D', 'A', 'A', 'D', 'A']];
   const result: Note[] = [];
   let phrase = -1, inPhrase = 0, repeat = 0;
-  const maxRepeat = difficulty === 'easy' ? 2 : 3;
+  const maxRepeat = difficulty === 'hard' ? 3 : 2;
   const average = events.reduce((sum, event) => sum + (event.salience ?? event.score), 0) / events.length;
   events.forEach((event, index) => {
     const bar = Math.floor(event.timeMs / Math.max(250, beatMs) / 4);
@@ -136,7 +136,7 @@ export function thin(candidates: Candidate[], difficulty: Difficulty, beatMs = 5
   return assignLanes(selected.map(timeMs => byTime.get(timeMs)!), difficulty, beatMs);
 }
 
-export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (percent: number) => void = () => {}): Analysis {
+export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (percent: number) => void = () => {}, includeHard = true): Analysis {
   if (sampleRate !== SAMPLE_RATE || audio.length < sampleRate || audio.length > sampleRate * 600) throw new Error(t("1초~10분 길이의 음원을 선택해 주세요."));
   let peak = 0;
   for (const value of audio) { if (!Number.isFinite(value)) throw new Error(t("음원에 잘못된 샘플이 있습니다.")); peak = Math.max(peak, Math.abs(value)); }
@@ -197,8 +197,9 @@ export function analyzePcm(audio: Float32Array, sampleRate: number, progress: (p
     candidates.push({ timeMs, salience, brightness: brightness[i], score: salience + (nearBeat ? .35 : 0) });
   }
   const easy = thin(candidates.filter(event => event.salience >= .12), 'easy', bestLag * HOP / sampleRate * 1000);
-  const hard = thin(candidates.filter(event => event.salience >= .045), 'hard', bestLag * HOP / sampleRate * 1000);
-  if (!easy.length || !hard.length) throw new Error(t("충분한 리듬 후보를 찾지 못했습니다. 다른 음원을 선택해 주세요."));
+  const normal = thin(candidates.filter(event => event.salience >= .08), 'normal', bestLag * HOP / sampleRate * 1000);
+  const hard = includeHard ? thin(candidates.filter(event => event.salience >= .045), 'hard', bestLag * HOP / sampleRate * 1000) : [];
+  if (!easy.length || !normal.length || (includeHard && !hard.length)) throw new Error(t("충분한 리듬 후보를 찾지 못했습니다. 다른 음원을 선택해 주세요."));
   progress(100);
-  return { durationMs, tempoBpm: Math.round(60 * sampleRate / (bestLag * HOP)), easy, hard };
+  return { durationMs, tempoBpm: Math.round(60 * sampleRate / (bestLag * HOP)), easy, normal, hard };
 }

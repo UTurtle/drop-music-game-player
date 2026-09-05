@@ -1,0 +1,57 @@
+/* Only mounted play sessions are dark. Home, creation and library stay editorial/light. */
+body:has(.session) {
+  background: #080a0c;
+  color: #e8edef;
+  --ink: #e8edef;
+  --muted: #a2aca6;
+  color-scheme: dark;
+}
+body:has(.session) .site-header,
+body:has(.session) footer { border-color: #2a3035; }
+body:has(.session) .header-note,
+body:has(.session) footer,
+body:has(.session) .creator-preview-bar p,
+body:has(.session) .keyboard-help { color: #a2aca6; }
+body:has(.session) .private-play-options { background: #12171a; color: #c4cdc7; }
+body:has(.session) .primary,
+body:has(.session) .secondary { background: #d3fc83; color: #10170c; border-color: #94ac67; }
+body:has(.session) .primary:hover:not(:disabled),
+body:has(.session) .secondary:hover { background: #e3ffb6; }
+body:has(.session) .quiet { color: #bdc9b6; }
+body:has(.session) .quiet:hover { background: #242d26; }
+body:has(.session) .difficulty-switch { background: #171e1a; }
+body:has(.session) .difficulty-switch button { color: #b7c4b9; }
+body:has(.session) .difficulty-switch button[aria-pressed=true] { background: #d3fc83; color: #10170c; }
+body:has(.session) .language-switch { border-color: #3b463f; }
+body:has(.session) .language-switch button { color: #c1cdc5; }
+body:has(.session) .language-switch button[aria-pressed=true] { background: #d3fc83; color: #10170c; }
+body:has(.session) .pill { background: #1b261c; color: #cfecaf; border-color: #485f3a; }
+.session:fullscreen { background: #080a0c; color: #e8edef; }
+.session .stage { background: #07090b; border-color: #2b3239; }
+.session .scoreboard,
+.session .saved-songs-panel { background: #101417; color: #e8edef; }
+.session .scoreboard > .eyebrow,
+.session .stat-label,
+.session .score-bottom,
+.session .combo small,
+.session .max-combo small { color: #a7b3ad; }
+.session .score-bottom { border-color: #303c33; }
+.session .verdict { color: #d3fc83; }
+.session .saved-songs-heading > span,
+.session .saved-songs-panel li span { color: #a7b3ad; }
+.session .saved-songs-panel li a { border-bottom-color: #2b3530; }
+.session .saved-songs-panel li a:hover,
+.session .saved-songs-panel li a[aria-current] { background: #1b2a20; border-left-color: #d3fc83; }
+.session .song-record-line .record-level { color: #b3c6aa; }
+.session .song-record-line .record-score { color: #ecf1ed; }
+.session .record-perfect { color: #d3fc83; }
+.session .record-full-combo { color: #b9c7ff; }
+.session .timeline { background: #263129; }
+.session .timeline > div { background: #b6db76; }
+.session .practice-art { background: #111719; }
+.session .practice-caption span { color: #a7b3ad; }
+.session .result { background: #162219; color: #e7f0e8; }
+.session .alignment { border-color: #303c33; }
+.session .offset-controls input[type=number] { background: #161d19; color: #ecf1ed; border-color: #3d4d40; }
+.session .error { background: #301d1d; color: #ffc4b8; }
+body:has(.session) :is(button, a, input, summary):focus-visible { outline-color: #d3fc83; }

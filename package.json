@@ -10,9 +10,13 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "node tests/browser.mjs",
     "test:v1": "node tests/v1-browser.mjs",
-    "start:tunnel": "npm start"
+    "start:tunnel": "npm start",
+    "setup:model": "node scripts/setup-model.mjs",
+    "test:cache": "node tests/model-cache-browser.mjs",
+    "test:library": "node tests/library-browser.mjs"
   },
   "dependencies": {
+    "onnxruntime-web": "1.23.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tsx": "^4.19.0"
