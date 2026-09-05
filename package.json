@@ -1,0 +1,39 @@
+{
+  "name": "drop-music-game-player",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --import tsx server/index.ts",
+    "start": "node --import tsx scripts/start.mjs",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:e2e": "node tests/browser.mjs",
+    "test:v1": "node tests/v1-browser.mjs",
+    "start:tunnel": "npm start"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/youtube": "^0.1.2",
+    "@vitejs/plugin-react": "^4.5.0",
+    "playwright": "^1.58.2",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  },
+  "description": "A local music rhythm toy with optional video playback and English/Korean UI",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UTurtle/drop-music-game-player.git"
+  }
+}
