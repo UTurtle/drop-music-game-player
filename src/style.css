@@ -227,7 +227,7 @@ body:has(.session) .site-header { height: 64px; width: calc(100% - 40px); }
 .practice-session .score-bottom { gap: 20px; border: 0; padding: 0; }
 .practice-session .note-canvas { height: clamp(330px, calc(100svh - 530px), 900px); }
 @media (min-width: 601px) {
-  .mv-session { max-width: 1280px; margin-inline: auto; }
+  .mv-session { max-width: 1100px; margin-inline: auto; }
 }
 @media (max-width: 600px) {
   body:has(.session) main, body:has(.session) .site-header { width: calc(100% - 20px); }
@@ -334,5 +334,23 @@ html[lang=ko] .hero h1 { font-size: clamp(38px, 4.2vw, 58px); line-height: 1.2; 
 
 .note-canvas { touch-action: none; }
 @media (min-width: 601px) {
-  .mv-session .video-area { width: min(100%, calc(clamp(200px, 38svh, 430px) * 16 / 9)); justify-self: center; }
+  .mv-session .stage { grid-template-columns: 1fr; }
+  .mv-session .video-area { width: 100%; }
+  .mv-session .scoreboard { flex-direction: row; align-items: center; padding: 12px 20px; }
+  .mv-session .scoreboard > .eyebrow { display: none; }
+  .mv-session .combo { font-size: 38px; }
+  .mv-session .score-bottom { border: 0; padding: 0; gap: 12px; }
+
+}
+
+/* Keep the complete embed and both tracks visible in desktop fullscreen. */
+@media (min-width: 851px) and (min-height: 700px) {
+  .mv-session:fullscreen { max-width: none; }
+  .mv-session:fullscreen .session-heading { display: none; }
+  .mv-session:fullscreen .video-area {
+    width: min(100%, calc((100svh - 420px) * 16 / 9));
+    justify-self: center;
+  }
+  .mv-session:fullscreen .note-canvas { height: 240px; }
+  .mv-session:fullscreen .scoreboard { min-height: 68px; padding-block: 8px; }
 }

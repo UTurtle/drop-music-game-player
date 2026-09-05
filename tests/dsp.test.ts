@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzePcm, assignLanes, DENSITY, fft, SAMPLE_RATE, thin } from '../src/dsp';
+import { analyzePcm, assignLanes, repeatedPhrases, DENSITY, fft, SAMPLE_RATE, thin } from '../src/dsp';
 
 test('FFT identifies a known frequency bin with expected amplitude', () => {
   const real = Float64Array.from({ length: 1024 }, (_, i) => Math.sin(2 * Math.PI * 16 * i / 1024));
@@ -57,4 +57,16 @@ test('phrase mapping has repeat hits and switches, respects hand limits and pres
   assert.deepEqual(swapped.slice(0, 4).map(n => n.lane), ['D', 'D', 'A', 'A']);
   const fast = assignLanes(events.map((e, i) => ({ ...e, timeMs: i * 150 })), 'hard');
   assert.ok(fast.every((note, i) => !i || note.lane !== fast[i - 1].lane));
+});
+
+test('recurrence matches repeated rhythm despite gain changes, rejects different rhythm and tone', () => {
+  const phrase = [0, 500, 1000, 1750, 2500, 3000, 3500].map((timeMs, i) => ({ timeMs: 1000 + timeMs, score: i % 2 ? .5 : 1, brightness: .2 }));
+  const repeat = phrase.map(e => ({ ...e, timeMs: e.timeMs + 8000, score: e.score * .7 }));
+  const events = [...phrase, ...repeat];
+  assert.equal(repeatedPhrases(events, 500).length, phrase.length);
+  const chart = assignLanes(events, 'hard');
+  assert.deepEqual(chart.slice(0, phrase.length).map(n => n.lane), chart.slice(phrase.length).map(n => n.lane));
+  assert.deepEqual(chart.map(n => n.timeMs), events.map(n => n.timeMs));
+  assert.equal(repeatedPhrases([...phrase, ...repeat.map(e => ({ ...e, brightness: .6 }))], 500).length, 0);
+  assert.equal(repeatedPhrases([...phrase, ...repeat.map((e, i) => ({ ...e, timeMs: e.timeMs + (i === 2 ? 200 : 0) }))], 500).length, 0);
 });

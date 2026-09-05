@@ -72,7 +72,7 @@ Generation still needs your local audio file. DROP does not download videos, cap
 
 ## Expectations
 
-The v2 generator uses onset brightness, accents and short phrase patterns, including repeat hits. Easy caps same-side runs at two; Hard at three, with very fast events alternating to avoid excessive one-hand bursts. Existing sessions must be regenerated to use these rules.
+The v3 generator uses onset brightness, accents and short phrase patterns, including repeat hits. Easy caps same-side runs at two; Hard at three, with very fast events alternating to avoid excessive one-hand bursts. Existing sessions must be regenerated to use these rules.
 
 Automatic charts are rough DSP-generated drafts, not hand-mapped charts. They can miss musical accents or feel repetitive. Real-song quality and synchronization vary; the automated tests use synthetic audio and mocked video events. There is no model training, and this is a hobby project, not a commercial service.
 
@@ -94,3 +94,5 @@ npm run test:e2e
 [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE)
 
 Empty presses break your combo and deduct 1,000 points, including below zero. Rapid notes still accept correctly timed presses.
+
+Repeated two-bar phrases are compared by onset spacing, relative strength and brightness. Close matches reuse hand patterns while preserving note times and run limits. This is a conservative recurrence heuristic, not chorus/verse recognition; tempo drift, different arrangements and phrase boundaries may prevent a match. Regenerate the chart to apply it.

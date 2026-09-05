@@ -4,7 +4,7 @@ import type { Difficulty, Note, Lane } from './chart';
 export const SAMPLE_RATE = 22_050;
 export const HOP = 220;
 export const FFT_SIZE = 1024;
-export const BROWSER_GENERATOR = 'browser-flux-phrases-v2';
+export const BROWSER_GENERATOR = 'browser-flux-recurrence-v3';
 export const DENSITY = { easy: { gap: 300, perSecond: 3 }, hard: { gap: 140, perSecond: 6 } };
 export interface Analysis { durationMs: number; tempoBpm: number; easy: Note[]; hard: Note[] }
 
@@ -43,6 +43,40 @@ function lowerBound(values: number[], value: number) {
 }
 export interface Candidate { timeMs: number; score: number; salience?: number; brightness?: number }
 
+/** Conservative two-bar recurrence matching; does not label verse/chorus or infer downbeats. */
+export function repeatedPhrases(events: Candidate[], beatMs: number): number[][] {
+  if (!events.length) return [];
+  const span = Math.max(250, beatMs) * 8;
+  const origin = events[0].timeMs;
+  const groups = new Map<number, number[]>();
+  events.forEach((event, index) => {
+    const block = Math.floor((event.timeMs - origin) / span);
+    const group = groups.get(block) ?? []; group.push(index); groups.set(block, group);
+  });
+  const templates: { block: number; indices: number[] }[] = [];
+  const matches: number[][] = [];
+  for (const [block, indices] of groups) {
+    // Avoid matching sparse fragments or incomplete tails.
+    if (indices.length < 4 || events[indices.at(-1)!].timeMs - events[indices[0]].timeMs < span * .5) continue;
+    const average = (ids: number[]) => ids.reduce((sum, i) => sum + (events[i].salience ?? events[i].score), 0) / ids.length;
+    const level = Math.max(average(indices), 1e-8);
+    const match = templates.find(template => {
+      if (template.indices.length !== indices.length) return false;
+      const referenceLevel = Math.max(average(template.indices), 1e-8);
+      return indices.every((index, position) => {
+        const a = events[index], b = events[template.indices[position]];
+        const timingError = Math.abs((a.timeMs - b.timeMs) - (block - template.block) * span);
+        const strengthError = Math.abs((a.salience ?? a.score) / level - (b.salience ?? b.score) / referenceLevel);
+        const toneError = a.brightness !== undefined && b.brightness !== undefined ? Math.abs(a.brightness - b.brightness) : 0;
+        return timingError <= beatMs * .12 && strengthError <= .3 && toneError <= .04;
+      });
+    });
+    if (match) matches.push(...indices.map((index, position) => [index, match.indices[position]]));
+    else templates.push({ block, indices });
+  }
+  return matches;
+}
+
 /** Map existing onsets, never insert arbitrary notes between audible events. */
 export function assignLanes(events: Candidate[], difficulty: Difficulty, beatMs = 500): Note[] {
   if (!events.length) return [];
@@ -72,6 +106,17 @@ export function assignLanes(events: Candidate[], difficulty: Difficulty, beatMs 
     if (lane === last && (repeat >= maxRepeat || gap < 200)) lane = lane === 'A' ? 'D' : 'A';
     repeat = lane === last ? repeat + 1 : 1;
     result.push({ timeMs: event.timeMs, lane }); inPhrase++;
+  });
+  // Reuse the earlier phrase's hand pattern while retaining every current onset time.
+  for (const [index, reference] of repeatedPhrases(events, beatMs)) result[index].lane = result[reference].lane;
+  // Recheck boundaries: reuse must never introduce an uncomfortable run.
+  repeat = 0;
+  result.forEach((note, index) => {
+    const last = result[index - 1];
+    if (last && note.lane === last.lane && (repeat >= maxRepeat || note.timeMs - last.timeMs < 200)) {
+      note.lane = note.lane === 'A' ? 'D' : 'A';
+    }
+    repeat = last && note.lane === last.lane ? repeat + 1 : 1;
   });
   return result;
 }

@@ -116,6 +116,14 @@ try {
   const canvas = await page.locator('canvas').boundingBox();
   assert.ok(canvas.y >= embed.y + embed.height, 'Notes must not cover the embedded video');
   await page.screenshot({ path: `${output}/video-layout.png`, fullPage: true });
+  await page.locator('.mv-session').evaluate(el => el.requestFullscreen());
+  await page.waitForTimeout(150);
+  const fullscreenCanvas = await page.locator('canvas').boundingBox();
+  assert.ok(fullscreenCanvas.y + fullscreenCanvas.height <= 900, 'Fullscreen must show both tracks');
+  await page.screenshot({ path: `${output}/video-fullscreen.png` });
+  await page.evaluate(() => document.exitFullscreen());
+  await page.waitForTimeout(150);
+
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileEmbed = await page.locator('iframe').boundingBox();
   assert.ok(Math.abs(mobileEmbed.width / mobileEmbed.height - 16 / 9) < .01, 'Mobile video must retain its aspect ratio');
