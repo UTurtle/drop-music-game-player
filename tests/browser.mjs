@@ -11,11 +11,11 @@ const advance = ms => page.evaluate(ms => window.advanceTime(ms), ms);
 try {
   await page.goto(base);
   await page.getByRole('button', { name: 'EN', exact: true }).click();
-  await page.getByRole('heading', { name: 'Why aren’t my favorite songs in rhythm games?' }).waitFor();
+  await page.getByRole('heading', { name: 'My favorite songs weren’t in rhythm games. So I made this.' }).waitFor();
   assert.equal(await page.locator('html').getAttribute('lang'), 'en');
   await page.screenshot({ path: `${output}/home-en.png`, fullPage: true });
   await page.getByRole('button', { name: 'KO', exact: true }).click();
-  await page.getByRole('heading', { name: '내가 좋아하는 노래들은 왜 리듬게임에 추가 안 해주지?' }).waitFor();
+  await page.getByRole('heading', { name: '좋아하는 노래가 리듬게임에 없길래 만들었습니다.' }).waitFor();
   await page.screenshot({ path: `${output}/home-ko.png`, fullPage: true });
   for (const [left, right] of [['a','d'], ['ArrowLeft','ArrowRight'], ['z','x']]) {
     await page.goto(`${base}/practice?test=1`);

@@ -1,6 +1,6 @@
 # DROP
 
-**Why aren’t my favorite songs in rhythm games?**
+**My favorite songs weren’t in rhythm games. So I made this.**
 
 [English](README.md) · [한국어](README.ko.md)
 

@@ -10,7 +10,7 @@ function App() {
   const language = useSyncExternalStore(subscribeLanguage, getLanguage);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [practice, setPractice] = useState(() => practiceChart('easy'));
-  useEffect(() => { document.documentElement.lang = language; document.title = t('내가 좋아하는 노래들은 왜 리듬게임에 추가 안 해주지? · DROP', 'Why aren’t my favorite songs in rhythm games? · DROP'); }, [language]);
+  useEffect(() => { document.documentElement.lang = language; document.title = t('좋아하는 노래가 리듬게임에 없길래 만들었습니다. · DROP', 'My favorite songs weren’t in rhythm games. So I made this. · DROP'); }, [language]);
   function choose(level: Difficulty) { setDifficulty(level); setPractice(practiceChart(level)); }
   const path = location.pathname;
   return <>
@@ -25,7 +25,7 @@ function App() {
         <div className="back-row"><a href="/">{t('← 홈으로', '← Home')}</a><div className="difficulty-switch"><button aria-pressed={difficulty === 'easy'} onClick={() => choose('easy')}>Easy</button><button aria-pressed={difficulty === 'hard'} onClick={() => choose('hard')}>Hard</button></div></div>
         <Player key={practice.chartId} chart={practice} practice />
       </> : path === '/privacy' ? <Privacy /> : path === '/' ? <>
-        <section className="hero"><div className="hero-copy"><span className="eyebrow">{t('내 컴퓨터에서, 내 음악으로', 'YOUR COMPUTER. YOUR MUSIC.')}</span><h1>{t('내가 좋아하는 노래들은', 'Why aren’t my favorite songs')}<br /><em>{t('왜 리듬게임에 추가 안 해주지?', 'in rhythm games?')}</em></h1><p>{t('음악 파일을 고르고, 두 개의 키로 리듬을 타세요.', 'Choose an audio file and follow the rhythm with two keys.')}<br />{t('잘 치지 않아도 괜찮아요. 그냥 재미로.', 'No need to be good. Just have fun.')}</p>
+        <section className="hero"><div className="hero-copy"><span className="eyebrow">{t('내 컴퓨터에서, 내 음악으로', 'YOUR COMPUTER. YOUR MUSIC.')}</span><h1>{t('좋아하는 노래가 리듬게임에 없길래', 'My favorite songs weren’t in rhythm games.')}<br /><em>{t('만들었습니다.', 'So I made this.')}</em></h1><p>{t('음악 파일을 고르고, 두 개의 키로 리듬을 타세요.', 'Choose an audio file and follow the rhythm with two keys.')}<br />{t('잘 치지 않아도 괜찮아요. 그냥 재미로.', 'No need to be good. Just have fun.')}</p>
           <div className="home-actions"><a className="primary" href="/create">{t('내 음악으로 플레이 →', 'Play my music →')}</a><a className="secondary" href="/practice">{t('먼저 연습해 보기', 'Try a practice round')}</a></div></div>
           <div className="hero-mark" aria-hidden="true"><div className="key-tile key-a">A<span>← / Z</span></div><div className="key-tile key-d">D<span>→ / X</span></div></div>
         </section>
